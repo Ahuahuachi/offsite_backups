@@ -257,7 +257,7 @@ def delete_old_backups_from_s3() -> int:
 			if len(folder_name) >= 15:
 				date_str = folder_name[:15]
 				try:
-					folder_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S").date()
+					folder_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S")
 					backup_folders.append((folder, folder_date))
 				except ValueError:
 					continue
