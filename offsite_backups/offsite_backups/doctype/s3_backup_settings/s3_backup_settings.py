@@ -205,7 +205,7 @@ def upload_file_to_s3(filename, folder, conn, bucket):
 
 
 def delete_s3_folder(conn, bucket, folder):
-	"""Delete all objects in a folder"""
+	"""Delete all objects in a folder, chunked to stay under AWS 1000-key limit."""
 	paginator = conn.get_paginator("list_objects_v2")
 	pages = paginator.paginate(Bucket=bucket, Prefix=folder)
 
@@ -214,8 +214,11 @@ def delete_s3_folder(conn, bucket, folder):
 		for obj in page.get("Contents", []):
 			objects_to_delete.append({"Key": obj["Key"]})
 
-	if objects_to_delete:
-		conn.delete_objects(Bucket=bucket, Delete={"Objects": objects_to_delete})
+	for i in range(0, len(objects_to_delete), 1000):
+		conn.delete_objects(
+			Bucket=bucket,
+			Delete={"Objects": objects_to_delete[i : i + 1000]},
+		)
 
 
 def delete_old_backups_from_s3() -> int:
