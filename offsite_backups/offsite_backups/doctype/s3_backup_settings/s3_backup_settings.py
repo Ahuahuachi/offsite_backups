@@ -247,11 +247,12 @@ def delete_old_backups_from_s3() -> int:
 	for page in pages:
 		for prefix in page.get("CommonPrefixes", []):
 			folder = prefix["Prefix"]
+			folder_name = folder[len(path) :]
 
 			# Extract date from folder name (format: YYYYMMDD_HHMMSS/)
 			# The folder name is 15 chars + trailing slash
-			if len(folder) >= 15:
-				date_str = folder[:15]
+			if len(folder_name) >= 15:
+				date_str = folder_name[:15]
 				try:
 					folder_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S").date()
 					backup_folders.append((folder, folder_date))
