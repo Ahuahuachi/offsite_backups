@@ -204,8 +204,17 @@ def upload_file_to_s3(filename, folder, conn, bucket):
 	conn.upload_file(filename, bucket, destpath)  # Requires PutObject permission
 
 
-def delete_s3_folder(conn, bucket, folder):
-	"""Delete all objects in a folder, chunked to stay under AWS 1000-key limit."""
+def delete_s3_folder(conn, bucket, folder) -> list:
+	"""Delete all objects in a folder, chunked to stay under AWS 1000-key limit.
+
+	Args:
+		conn (boto3.client): S3 client
+		bucket (str): S3 bucket
+		folder (str): S3 folder
+
+	Returns:
+		list: List of errors
+	"""
 	paginator = conn.get_paginator("list_objects_v2")
 	pages = paginator.paginate(Bucket=bucket, Prefix=folder)
 
