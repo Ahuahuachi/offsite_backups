@@ -214,11 +214,15 @@ def delete_s3_folder(conn, bucket, folder):
 		for obj in page.get("Contents", []):
 			objects_to_delete.append({"Key": obj["Key"]})
 
+	errors = []
 	for i in range(0, len(objects_to_delete), 1000):
-		conn.delete_objects(
+		response = conn.delete_objects(
 			Bucket=bucket,
 			Delete={"Objects": objects_to_delete[i : i + 1000]},
 		)
+		errors.extend(response.get("Errors", []))
+
+	return errors
 
 
 def delete_old_backups_from_s3() -> int:
@@ -272,7 +276,17 @@ def delete_old_backups_from_s3() -> int:
 	folders_to_delete = backup_folders[doc.retention_count :]
 
 	# Delete old backups
+	all_errors = []
 	for folder, __ in folders_to_delete:
-		delete_s3_folder(conn, bucket, folder)
+		errors = delete_s3_folder(conn, bucket, folder)
+		all_errors.extend(errors)
+
+	if all_errors:
+		failed_keys = [e["Key"] for e in all_errors]
+		frappe.throw(
+			_("Failed to delete {0} backup object(s) from S3: {1}").format(
+				len(failed_keys), ", ".join(failed_keys[:10])
+			)
+		)
 
 	return len(folders_to_delete)
