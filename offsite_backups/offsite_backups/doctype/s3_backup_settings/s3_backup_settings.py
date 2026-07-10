@@ -204,16 +204,13 @@ def upload_file_to_s3(filename, folder, conn, bucket):
 	conn.upload_file(filename, bucket, destpath)  # Requires PutObject permission
 
 
-def delete_s3_folder(conn, bucket, folder) -> list:
+def delete_s3_folder(conn, bucket, folder):
 	"""Delete all objects in a folder, chunked to stay under AWS 1000-key limit.
 
 	Args:
 		conn (boto3.client): S3 client
 		bucket (str): S3 bucket
 		folder (str): S3 folder
-
-	Returns:
-		list: List of errors
 	"""
 	paginator = conn.get_paginator("list_objects_v2")
 	pages = paginator.paginate(Bucket=bucket, Prefix=folder)
@@ -231,7 +228,11 @@ def delete_s3_folder(conn, bucket, folder) -> list:
 		)
 		errors.extend(response.get("Errors", []))
 
-	return errors
+	for err in errors:
+		frappe.log_error(
+			title="S3 Backup Rotation Delete Error",
+			message=f"Failed to delete {err['Key']}: {err['Code']} - {err['Message']}",
+		)
 
 
 def delete_old_backups_from_s3() -> int:
@@ -285,17 +286,7 @@ def delete_old_backups_from_s3() -> int:
 	folders_to_delete = backup_folders[doc.retention_count :]
 
 	# Delete old backups
-	all_errors = []
 	for folder, __ in folders_to_delete:
-		errors = delete_s3_folder(conn, bucket, folder)
-		all_errors.extend(errors)
-
-	if all_errors:
-		failed_keys = [e["Key"] for e in all_errors]
-		frappe.throw(
-			_("Failed to delete {0} backup object(s) from S3: {1}").format(
-				len(failed_keys), ", ".join(failed_keys[:10])
-			)
-		)
+		delete_s3_folder(conn, bucket, folder)
 
 	return len(folders_to_delete)
